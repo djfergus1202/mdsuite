@@ -1,0 +1,1083 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Comprehensive Docking & Antibody Design Suite • Student Edition</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#0f172a" />
+<meta name="description" content="In-browser antibody design (CDR, scaffold) and molecular docking (antibody–antigen, ligand screening, CDR mapping), 3D visualization, and analysis." />
+
+<script defer src="https://unpkg.com/3dmol@2.4.2/build/3Dmol-min.js"></script>
+<script defer src="https://unpkg.com/pako@2.1.0/dist/pako.min.js"></script>
+<script defer src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+
+<style>
+  :root{
+    --bg:#0b1220;--panel:#0f172a;--text:#e5e7eb;--muted:#9ca3af;--accent:#7dd3fc;--line:#1f2937;
+    --green:#34d399;--red:#f87171;--yellow:#fbbf24;--orange:#fb923c;--purple:#a78bfa;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sans:Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Arial
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6}
+  a{color:var(--accent);text-decoration:none}
+  header{padding:34px 16px;background:radial-gradient(1200px 600px at 15% -10%,#1d2a4a,transparent 60%),radial-gradient(1000px 500px at 120% 10%,#2a1e4a,transparent 60%)}
+  .wrap{max-width:1400px;margin:0 auto}
+  h1{margin:0 0 8px;font-size:30px;font-weight:800}
+  .byline{color:#93c5fd;font-weight:700;margin-top:6px}
+  h2{margin:0 0 10px;font-size:22px;font-weight:700}
+  h3{margin:14px 0 6px;font-size:17px;font-weight:700}
+  h4{margin:14px 0 6px;font-size:15px;font-weight:700}
+  p.lead{color:var(--muted);margin:6px 0 0;font-size:14px}
+  section{padding:22px 16px;border-top:1px solid var(--line);background:var(--panel)}
+  .card{background:#0b1220;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .grid{display:grid;gap:16px}
+  @media(min-width:980px){.grid.two{grid-template-columns:1.05fr .95fr}}
+  @media(min-width:1100px){.grid.three{grid-template-columns:repeat(3,1fr)}}
+  @media(min-width:1200px){.grid.four{grid-template-columns:repeat(4,1fr)}}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  label{font-weight:700;font-size:13px}
+  input[type=number],input[type=text],input[type=file],textarea,select{background:#0a0f1a;color:var(--text);border:1px solid #1f2937;border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:13px;min-width:80px;width:100%}
+  textarea{width:100%;min-height:110px;resize:vertical}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;font-weight:700;border:1px solid var(--line);background:#0b1220;cursor:pointer;font-size:13px;transition:.2s;color:var(--text)}
+  .btn:hover:not([disabled]){transform:translateY(-1px);box-shadow:0 6px 16px rgba(125,211,252,.25);color:var(--text)}
+  .btn.primary{background:linear-gradient(180deg,#2563eb,#1e40af);border:0;color:white}
+  .btn.green{background:linear-gradient(180deg,#059669,#047857);border:0;color:white}
+  .btn.red{background:linear-gradient(180deg,#dc2626,#b91c1c);border:0;color:white}
+  .btn.purple{background:linear-gradient(180deg,#7c3aed,#6d28d9);border:0;color:white}
+  .btn.orange{background:linear-gradient(180deg,#fb923c,#f97316);border:0;color:white}
+  .btn[disabled]{opacity:.55;cursor:not-allowed}
+  .btn-group{display:flex;gap:1rem;flex-wrap:wrap}
+  .pill{padding:2px 8px;border:1px solid #334155;border-radius:999px;font-size:12px;color:#93c5fd;font-weight:800;display:inline-block;}
+  .pill-green{color:var(--green);border-color:var(--green);}
+  .pill-purple{color:var(--purple);border-color:var(--purple);}
+  progress{width:260px;height:10px;border:1px solid var(--line);border-radius:999px;background:#0b1220}
+  progress::-webkit-progress-value{background:#7dd3fc;border-radius:999px;transition:width .3s}
+  .infobox{border:1px solid #334155;border-left:4px solid var(--accent);border-radius:10px;padding:10px;background:#0a0f1a;color:#cbd5e1;margin:10px 0;font-size:13px}
+  .errorbox{border:1px solid #7f1d1d;border-left:4px solid #dc2626;border-radius:10px;padding:10px;background:#1a0c0c;color:#fecaca;margin:10px 0}
+  .successbox{border:1px solid #065f46;border-left:4px solid #10b981;border-radius:10px;padding:10px;background:#0a1f1a;color:#a7f3d0;margin:10px 0}
+  .score{font-family:var(--mono);background:#0a0f1a;border:1px solid var(--line);border-radius:8px;padding:8px;overflow:auto;font-size:12px;line-height:1.5;white-space:pre-wrap}
+  .chainchips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .chip{border:1px solid #334155;border-radius:999px;padding:2px 8px;display:inline-flex;align-items:center;gap:6px;font-size:13px}
+  .chip input{accent-color:#7dd3fc;width:auto;min-width:auto;}
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .tabbtn{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:#0b1220;cursor:pointer;font-size:14px;font-weight:800;transition:.2s;color:var(--text)}
+  .tabbtn:hover{background:#152034}
+  .tabbtn.active{background:linear-gradient(180deg,#2563eb,#1d4ed8);border:0;color:#fff}
+  .tabsec{display:none}
+  .tabsec.active{display:block}
+  .table{width:100%;border-collapse:collapse;font-size:13px;background:#0a0f1a}
+  .table th{background:#152034;padding:8px;text-align:left;border-bottom:2px solid var(--line);position:sticky;top:0;z-index:1}
+  .table td{padding:6px 8px;border-bottom:1px solid #112033}
+  .table tr:hover{background:#0f1829}
+  .table-container{max-height:460px;overflow:auto;border:1px solid var(--line);border-radius:8px;margin-top:8px}
+  #viewer,#viewerLig,#viewerScr,#viewerComp,#viewerCDR,#viewerDesign{position:relative;width:100%;height:560px;border:1px solid var(--line);border-radius:10px;background:#0a0f1a;overflow:hidden}
+  .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:10px 0}
+  .metric-card{background:#0a0f1a;border:1px solid var(--line);border-radius:8px;padding:10px;text-align:center}
+  .metric-value{font-size:20px;font-weight:800;color:var(--accent)}
+  .metric-label{font-size:12px;color:var(--muted)}
+  footer{padding:18px 16px;color:#9ca3af;text-align:center;font-size:13px}
+  .small{font-size:12px}
+  .guide{display:grid;gap:8px;margin-top:12px}
+  .step{background:#0a0f1a;border:1px dashed #334155;border-radius:10px;padding:10px}
+  #nmrMoleculeImage { min-height: 200px; background-size: contain; background-position: center; background-repeat: no-repeat; border-radius: 8px; border: 1px solid var(--line); margin-bottom: 12px; }
+  .topbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:8px}
+  .kbd{font-family:var(--mono);background:#111827;border:1px solid #374151;border-radius:6px;padding:2px 6px;font-size:12px}
+  [aria-live]{min-width:40px}
+  .scheme-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-top:10px}
+  .scheme-card{background:#0a0f1a;border:1px solid var(--line);border-radius:8px;padding:8px}
+  .cdr-highlight{background:#1e293b;border-left:3px solid var(--accent);padding:6px 8px;margin:6px 0;border-radius:6px}
+  .cdr-region{font-family:var(--mono);font-size:11px;color:#fbbf24;background:#1a1a2e;padding:2px 4px;border-radius:4px;margin:2px}
+  
+  /* === Styles for Antibody Designer components === */
+  .ig-selector { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin: 1.5rem 0; }
+  .ig-option { padding: 1rem; background: var(--panel); border: 2px solid var(--line); border-radius: 12px; cursor: pointer; text-align: center; transition: all 0.3s; }
+  .ig-option:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .ig-option.selected { background: #152034; border-color: var(--green); }
+  .ig-option h3 { margin: 0; color: var(--accent); font-size: 1.5rem; }
+  .ig-option p { margin: 0.5rem 0 0; font-size: 0.85rem; color: var(--muted); }
+  .cdr-panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+  .cdr-item { background: var(--bg); padding: 1rem; border-radius: 8px; border: 1px solid var(--line); }
+  .cdr-label { font-weight: 600; color: var(--green); margin-bottom: 0.5rem; font-size: 0.9rem; }
+  .cdr-sequence { font-family: var(--mono); font-size: 1.1rem; color: var(--text); letter-spacing: 1px; word-break: break-all; }
+  .affinity-meter { margin: 1rem 0; }
+  .meter-bar { height: 30px; background: var(--bg); border: 1px solid var(--line); border-radius: 15px; overflow: hidden; position: relative; }
+  .meter-fill { height: 100%; background: linear-gradient(90deg, #2563eb, #7dd3fc); transition: width 0.5s ease; display: flex; align-items: center; justify-content: flex-end; padding-right: 1rem; }
+  .meter-value { color: white; font-weight: 600; font-size: 0.9rem; }
+  .viewer-controls { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 10px; }
+  .result-item { display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid var(--line); }
+  .result-label { color: var(--muted); font-weight: 500; }
+  .result-value { color: var(--green); font-weight: 600; font-family: var(--mono); }
+  @media (max-width: 768px) {
+    .ig-selector { grid-template-columns: repeat(2, 1fr); }
+    .cdr-panel { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <h1>🧬 Comprehensive Molecular Design & Docking Suite — <span style="color:#a7f3d0">Student Edition</span></h1>
+    <div class="byline">by DJF — The New Chemist</div>
+    <p class="lead">
+      <b>Design:</b> Antibody CDR/scaffold generation • Epitope DB • Property prediction
+      <b>Docking:</b> Antibody–antigen • Ligand screening
+      <b>Analysis:</b> CDR mapping (Kabat/IMGT) • Pose clustering • ΔH estimation • QA
+    </p>
+
+    <div class="infobox" role="region" aria-label="Student guide">
+      <b>Quick Start (Students):</b>
+      <div class="guide">
+        <div class="step">1) <b>Design an Ab</b> in <span class="kbd">🎨 Ab Design</span>: Pick a target (e.g., IgG), scaffold (e.g., scFv), and click <b>Generate Antibody</b>.</div>
+        <div class="step">2) <b>Dock Ab–Ag</b> in <span class="kbd">⚡ Ab-Ag Dock</span>: Paste Ab and Ag FASTAs, click <b>Run Docking</b>, then <b>Visualize</b>.</div>
+        <div class="step">3) <b>Screen ligands</b> in <span class="kbd">💊 Ligand Screen</span>: Enter target/ligands, click <b>Run Screen</b> to rank by affinity.</div>
+        <div class="step">4) <b>Analyze CDRs</b> in <span class="kbd">🔬 CDR Map</span>: Upload sequence, click <b>Map CDRs</b> to identify regions.</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- Antibody Design Section -->
+<section id="antibody-design">
+  <div class="wrap">
+    <h2>🎨 Antibody Designer</h2>
+    <p class="lead">Design antibodies with customizable CDRs and scaffolds</p>
+    
+    <div class="grid two">
+      <div>
+        <div class="card">
+          <h3>Configure Antibody</h3>
+          
+          <label>Target Antigen</label>
+          <select id="ab-target" data-testid="ab-target">
+            <option value="covid-spike">SARS-CoV-2 Spike</option>
+            <option value="her2">HER2/neu</option>
+            <option value="pd1">PD-1</option>
+            <option value="vegf">VEGF</option>
+            <option value="custom">Custom</option>
+          </select>
+          
+          <label style="margin-top:10px">Antibody Format</label>
+          <select id="ab-format" data-testid="ab-format">
+            <option value="igg">IgG (Full)</option>
+            <option value="fab">Fab Fragment</option>
+            <option value="scfv">scFv</option>
+            <option value="nanobody">Nanobody (VHH)</option>
+          </select>
+          
+          <label style="margin-top:10px">Optimization Goal</label>
+          <select id="ab-goal" data-testid="ab-goal">
+            <option value="affinity">High Affinity</option>
+            <option value="stability">High Stability</option>
+            <option value="specificity">High Specificity</option>
+            <option value="developability">Developability</option>
+          </select>
+          
+          <div style="margin-top:15px">
+            <button class="btn primary" id="generate-ab" data-testid="generate-ab">
+              🧬 Generate Antibody
+            </button>
+            <button class="btn" id="randomize-cdrs" data-testid="randomize-cdrs">
+              🎲 Randomize CDRs
+            </button>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:12px">
+          <h4>CDR Sequences</h4>
+          <div id="cdr-display" data-testid="cdr-display">
+            <div class="cdr-highlight">
+              <div class="cdr-region">H-CDR1</div>
+              <div class="cdr-sequence" id="hcdr1">-</div>
+            </div>
+            <div class="cdr-highlight">
+              <div class="cdr-region">H-CDR2</div>
+              <div class="cdr-sequence" id="hcdr2">-</div>
+            </div>
+            <div class="cdr-highlight">
+              <div class="cdr-region">H-CDR3</div>
+              <div class="cdr-sequence" id="hcdr3">-</div>
+            </div>
+            <div class="cdr-highlight">
+              <div class="cdr-region">L-CDR1</div>
+              <div class="cdr-sequence" id="lcdr1">-</div>
+            </div>
+            <div class="cdr-highlight">
+              <div class="cdr-region">L-CDR2</div>
+              <div class="cdr-sequence" id="lcdr2">-</div>
+            </div>
+            <div class="cdr-highlight">
+              <div class="cdr-region">L-CDR3</div>
+              <div class="cdr-sequence" id="lcdr3">-</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div>
+        <div class="card">
+          <h3>3D Preview</h3>
+          <div id="viewerDesign"></div>
+          <div class="viewer-controls">
+            <button class="btn" onclick="resetDesignView()">🔄 Reset View</button>
+            <button class="btn green" id="export-ab-pdb" data-testid="export-ab-pdb">💾 Export PDB</button>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:12px">
+          <h4>Predicted Properties</h4>
+          <div id="ab-properties" data-testid="ab-properties">
+            <div class="result-item">
+              <span class="result-label">Affinity (KD)</span>
+              <span class="result-value" id="ab-affinity">-</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Stability (Tm)</span>
+              <span class="result-value" id="ab-stability">-</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Solubility</span>
+              <span class="result-value" id="ab-solubility">-</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Immunogenicity Risk</span>
+              <span class="result-value" id="ab-immunogenicity">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Antibody-Antigen Docking Section -->
+<section id="ab-ag-docking">
+  <div class="wrap">
+    <h2>⚡ Antibody-Antigen Docking</h2>
+    <p class="lead">Predict antibody-antigen binding modes and interfaces</p>
+    
+    <div class="grid two">
+      <div>
+        <div class="card">
+          <h3>Input Sequences</h3>
+          
+          <label>Antibody Sequence (FASTA)</label>
+          <textarea id="ab-sequence" data-testid="ab-sequence" placeholder=">Heavy Chain
+EVQLVESGGGLVQPGGSLRLSCAASGFTFS...
+>Light Chain
+DIQMTQSPSSLSASVGDRVTITCRASQSIS..."></textarea>
+          
+          <label style="margin-top:10px">Antigen Sequence (FASTA)</label>
+          <textarea id="ag-sequence" data-testid="ag-sequence" placeholder=">Antigen
+MRVKEKYQHLWRWGWRWGTMLLGMLMICS..."></textarea>
+          
+          <label style="margin-top:10px">Docking Parameters</label>
+          <div class="row">
+            <input type="number" id="dock-runs" data-testid="dock-runs" value="10" min="1" max="100" style="width:100px">
+            <label style="font-weight:normal">Runs</label>
+            <input type="number" id="dock-rmsd" data-testid="dock-rmsd" value="2.0" min="0.5" max="10" step="0.5" style="width:100px">
+            <label style="font-weight:normal">RMSD cutoff (Å)</label>
+          </div>
+          
+          <div style="margin-top:15px">
+            <button class="btn primary" id="run-docking" data-testid="run-docking">
+              ⚡ Run Docking
+            </button>
+            <button class="btn" id="load-example" data-testid="load-example">
+              📄 Load Example
+            </button>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:12px">
+          <h4>Docking Results</h4>
+          <div id="docking-results" data-testid="docking-results">
+            <div class="infobox">No docking results yet. Run docking to see predictions.</div>
+          </div>
+        </div>
+      </div>
+      
+      <div>
+        <div class="card">
+          <h3>3D Visualization</h3>
+          <div id="viewer"></div>
+          <div class="viewer-controls">
+            <button class="btn" onclick="resetDockView()">🔄 Reset View</button>
+            <button class="btn" onclick="toggleSurface()">🎨 Toggle Surface</button>
+            <button class="btn green" id="export-dock-pdb" data-testid="export-dock-pdb">💾 Export Complex</button>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:12px">
+          <h4>Interface Analysis</h4>
+          <div id="interface-analysis" data-testid="interface-analysis">
+            <div class="result-item">
+              <span class="result-label">Interface Area</span>
+              <span class="result-value" id="interface-area">-</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">H-bonds</span>
+              <span class="result-value" id="hbonds">-</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Salt Bridges</span>
+              <span class="result-value" id="salt-bridges">-</span>
+            </div>
+            <div class="result-item">
+              <span class="result-label">Binding Energy</span>
+              <span class="result-value" id="binding-energy">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Ligand Screening Section -->
+<section id="ligand-screening">
+  <div class="wrap">
+    <h2>💊 Ligand Screening</h2>
+    <p class="lead">Virtual screening of small molecule libraries</p>
+    
+    <div class="grid two">
+      <div>
+        <div class="card">
+          <h3>Target & Library</h3>
+          
+          <label>Target Protein (PDB ID or Upload)</label>
+          <input type="text" id="target-pdb" data-testid="target-pdb" placeholder="e.g., 7VNE">
+          
+          <label style="margin-top:10px">Ligand Library</label>
+          <select id="ligand-library" data-testid="ligand-library">
+            <option value="fda">FDA Approved Drugs</option>
+            <option value="natural">Natural Products</option>
+            <option value="fragments">Fragment Library</option>
+            <option value="custom">Custom SMILES List</option>
+          </select>
+          
+          <label style="margin-top:10px">Custom Ligands (SMILES, one per line)</label>
+          <textarea id="custom-ligands" data-testid="custom-ligands" placeholder="CC(=O)Oc1ccccc1C(=O)O
+CCO
+c1ccccc1"></textarea>
+          
+          <label style="margin-top:10px">Screening Parameters</label>
+          <div class="row">
+            <input type="number" id="exhaustiveness" data-testid="exhaustiveness" value="8" min="1" max="32" style="width:100px">
+            <label style="font-weight:normal">Exhaustiveness</label>
+            <input type="number" id="num-modes" data-testid="num-modes" value="9" min="1" max="20" style="width:100px">
+            <label style="font-weight:normal">Modes</label>
+          </div>
+          
+          <div style="margin-top:15px">
+            <button class="btn primary" id="run-screening" data-testid="run-screening">
+              🔍 Run Screening
+            </button>
+            <button class="btn" id="add-known-inhibitor" data-testid="add-known-inhibitor">
+              ➕ Add Known Inhibitor
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div>
+        <div class="card">
+          <h3>Screening Results</h3>
+          <div class="table-container">
+            <table class="table" id="screening-table" data-testid="screening-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Ligand</th>
+                  <th>Affinity (kcal/mol)</th>
+                  <th>LE</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="screening-results">
+                <tr>
+                  <td colspan="5" style="text-align:center;color:var(--muted)">
+                    No screening results yet
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:12px">
+          <h3>Pose Visualization</h3>
+          <div id="viewerLig"></div>
+          <div class="viewer-controls">
+            <button class="btn" onclick="resetLigView()">🔄 Reset View</button>
+            <button class="btn" onclick="showInteractions()">⚡ Show Interactions</button>
+            <button class="btn green" id="export-poses" data-testid="export-poses">💾 Export Poses</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CDR Mapping Section -->
+<section id="cdr-mapping">
+  <div class="wrap">
+    <h2>🔬 CDR Mapping & Analysis</h2>
+    <p class="lead">Identify and analyze CDR regions using multiple numbering schemes</p>
+    
+    <div class="grid two">
+      <div>
+        <div class="card">
+          <h3>Input Sequence</h3>
+          
+          <label>Antibody Sequence</label>
+          <textarea id="cdr-input" data-testid="cdr-input" placeholder="Paste antibody sequence (FASTA or plain text)"></textarea>
+          
+          <label style="margin-top:10px">Numbering Scheme</label>
+          <select id="numbering-scheme" data-testid="numbering-scheme">
+            <option value="kabat">Kabat</option>
+            <option value="chothia">Chothia</option>
+            <option value="imgt">IMGT</option>
+            <option value="aho">AHo</option>
+          </select>
+          
+          <label style="margin-top:10px">Analysis Options</label>
+          <div class="row">
+            <label style="font-weight:normal">
+              <input type="checkbox" id="show-germline" data-testid="show-germline" checked> Show Germline
+            </label>
+            <label style="font-weight:normal">
+              <input type="checkbox" id="calc-humanness" data-testid="calc-humanness" checked> Calculate Humanness
+            </label>
+            <label style="font-weight:normal">
+              <input type="checkbox" id="predict-paratope" data-testid="predict-paratope"> Predict Paratope
+            </label>
+          </div>
+          
+          <div style="margin-top:15px">
+            <button class="btn primary" id="map-cdrs" data-testid="map-cdrs">
+              🔬 Map CDRs
+            </button>
+            <button class="btn" id="clear-cdr" data-testid="clear-cdr">
+              🗑️ Clear
+            </button>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:12px">
+          <h4>CDR Statistics</h4>
+          <div id="cdr-stats" data-testid="cdr-stats">
+            <div class="infobox">Enter sequence and map CDRs to see statistics</div>
+          </div>
+        </div>
+      </div>
+      
+      <div>
+        <div class="card">
+          <h3>CDR Visualization</h3>
+          <div id="viewerCDR"></div>
+          <div class="viewer-controls">
+            <button class="btn" onclick="resetCDRView()">🔄 Reset View</button>
+            <button class="btn" onclick="highlightCDRs()">🎨 Highlight CDRs</button>
+            <button class="btn green" id="export-cdr-analysis" data-testid="export-cdr-analysis">💾 Export Analysis</button>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top:12px">
+          <h4>Sequence Alignment</h4>
+          <div id="sequence-alignment" data-testid="sequence-alignment" class="score">
+            Alignment will appear here after CDR mapping
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Comprehensive Molecular Design & Docking Suite v1.0 | Built for research and education</p>
+    <p class="small">© 2024 DJF - The New Chemist | Powered by 3Dmol.js, Plotly, and modern web technologies</p>
+  </div>
+</footer>
+
+<script>
+// Initialize 3D viewers
+let viewer, viewerLig, viewerCDR, viewerDesign;
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize all 3D viewers
+  if (document.getElementById('viewer')) {
+    viewer = $3Dmol.createViewer('viewer', {
+      backgroundColor: '#0a0f1a'
+    });
+  }
+  
+  if (document.getElementById('viewerLig')) {
+    viewerLig = $3Dmol.createViewer('viewerLig', {
+      backgroundColor: '#0a0f1a'
+    });
+  }
+  
+  if (document.getElementById('viewerCDR')) {
+    viewerCDR = $3Dmol.createViewer('viewerCDR', {
+      backgroundColor: '#0a0f1a'
+    });
+  }
+  
+  if (document.getElementById('viewerDesign')) {
+    viewerDesign = $3Dmol.createViewer('viewerDesign', {
+      backgroundColor: '#0a0f1a'
+    });
+  }
+
+  // Event Listeners for Antibody Designer
+  document.getElementById('generate-ab').addEventListener('click', generateAntibody);
+  document.getElementById('randomize-cdrs').addEventListener('click', randomizeCDRs);
+  document.getElementById('export-ab-pdb').addEventListener('click', exportAntibodyPDB);
+  
+  // Event Listeners for Ab-Ag Docking
+  document.getElementById('run-docking').addEventListener('click', runDocking);
+  document.getElementById('load-example').addEventListener('click', loadExample);
+  document.getElementById('export-dock-pdb').addEventListener('click', exportDockingPDB);
+  
+  // Event Listeners for Ligand Screening
+  document.getElementById('run-screening').addEventListener('click', runScreening);
+  document.getElementById('add-known-inhibitor').addEventListener('click', addKnownInhibitor);
+  document.getElementById('export-poses').addEventListener('click', exportPoses);
+  
+  // Event Listeners for CDR Mapping
+  document.getElementById('map-cdrs').addEventListener('click', mapCDRs);
+  document.getElementById('clear-cdr').addEventListener('click', clearCDR);
+  document.getElementById('export-cdr-analysis').addEventListener('click', exportCDRAnalysis);
+});
+
+// Antibody Designer Functions
+function generateAntibody() {
+  const target = document.getElementById('ab-target').value;
+  const format = document.getElementById('ab-format').value;
+  const goal = document.getElementById('ab-goal').value;
+  
+  // Simulate CDR generation
+  const cdrs = generateCDRSequences(target, format, goal);
+  displayCDRs(cdrs);
+  
+  // Update properties
+  updateAntibodyProperties(cdrs);
+  
+  // Visualize structure
+  visualizeAntibody(cdrs, format);
+}
+
+function generateCDRSequences(target, format, goal) {
+  // Simulated CDR sequences based on target
+  const cdrTemplates = {
+    'covid-spike': {
+      hcdr1: 'GYTFTSYW',
+      hcdr2: 'IYPGDGDT',
+      hcdr3: 'ARRGQVTMLVVDSY',
+      lcdr1: 'QSVSSSY',
+      lcdr2: 'GAS',
+      lcdr3: 'QQYGSSPLT'
+    },
+    'her2': {
+      hcdr1: 'GFNIKDTY',
+      hcdr2: 'IYPTNGYT',
+      hcdr3: 'ARWGGDGFYAMDY',
+      lcdr1: 'RASQSVS',
+      lcdr2: 'DAS',
+      lcdr3: 'QQYNNWPPYT'
+    },
+    'pd1': {
+      hcdr1: 'GFTFSSYA',
+      hcdr2: 'ISGSGGST',
+      hcdr3: 'AKDRLSITIRPRYYGLDV',
+      lcdr1: 'RASQGIS',
+      lcdr2: 'AAS',
+      lcdr3: 'QQLNSYPPYT'
+    },
+    'vegf': {
+      hcdr1: 'GYAFSSYW',
+      hcdr2: 'IYPGDSD',
+      hcdr3: 'ARSPQGLDLDPFDY',
+      lcdr1: 'SASQDIS',
+      lcdr2: 'AAS',
+      lcdr3: 'QQFNSYPLT'
+    },
+    'custom': {
+      hcdr1: 'GFTFSDYW',
+      hcdr2: 'ISGSGGS',
+      hcdr3: 'ARDYGDYAMDY',
+      lcdr1: 'RASQSIS',
+      lcdr2: 'AAS',
+      lcdr3: 'QQSYNLPT'
+    }
+  };
+  
+  return cdrTemplates[target] || cdrTemplates['custom'];
+}
+
+function displayCDRs(cdrs) {
+  document.getElementById('hcdr1').textContent = cdrs.hcdr1;
+  document.getElementById('hcdr2').textContent = cdrs.hcdr2;
+  document.getElementById('hcdr3').textContent = cdrs.hcdr3;
+  document.getElementById('lcdr1').textContent = cdrs.lcdr1;
+  document.getElementById('lcdr2').textContent = cdrs.lcdr2;
+  document.getElementById('lcdr3').textContent = cdrs.lcdr3;
+}
+
+function updateAntibodyProperties(cdrs) {
+  // Simulate property prediction
+  const affinity = (Math.random() * 9 + 1).toFixed(1) + ' nM';
+  const stability = (Math.random() * 15 + 70).toFixed(1) + '°C';
+  const solubility = (Math.random() * 40 + 60).toFixed(0) + '%';
+  const immunogenicity = ['Low', 'Medium', 'High'][Math.floor(Math.random() * 3)];
+  
+  document.getElementById('ab-affinity').textContent = affinity;
+  document.getElementById('ab-stability').textContent = stability;
+  document.getElementById('ab-solubility').textContent = solubility;
+  document.getElementById('ab-immunogenicity').textContent = immunogenicity;
+}
+
+function visualizeAntibody(cdrs, format) {
+  if (!viewerDesign) return;
+  
+  viewerDesign.clear();
+  
+  // Create simplified antibody visualization
+  const center = {x: 0, y: 0, z: 0};
+  
+  // Heavy chain
+  viewerDesign.addCylinder({
+    start: {x: -5, y: 0, z: 0},
+    end: {x: -2, y: 10, z: 0},
+    radius: 1.5,
+    color: '#2563eb'
+  });
+  
+  // Light chain
+  viewerDesign.addCylinder({
+    start: {x: 5, y: 0, z: 0},
+    end: {x: 2, y: 10, z: 0},
+    radius: 1.5,
+    color: '#7dd3fc'
+  });
+  
+  // CDR loops
+  const cdrPositions = [
+    {x: -2, y: 10, z: 0}, // HCDR1
+    {x: -2, y: 8, z: 0},  // HCDR2
+    {x: -2, y: 6, z: 0},  // HCDR3
+    {x: 2, y: 10, z: 0},  // LCDR1
+    {x: 2, y: 8, z: 0},   // LCDR2
+    {x: 2, y: 6, z: 0}    // LCDR3
+  ];
+  
+  cdrPositions.forEach(pos => {
+    viewerDesign.addSphere({
+      center: pos,
+      radius: 1,
+      color: '#34d399'
+    });
+  });
+  
+  viewerDesign.zoomTo();
+  viewerDesign.render();
+}
+
+function randomizeCDRs() {
+  const aminoAcids = 'ACDEFGHIKLMNPQRSTVWY';
+  const cdrs = {
+    hcdr1: generateRandomSequence(8, aminoAcids),
+    hcdr2: generateRandomSequence(8, aminoAcids),
+    hcdr3: generateRandomSequence(14, aminoAcids),
+    lcdr1: generateRandomSequence(7, aminoAcids),
+    lcdr2: generateRandomSequence(3, aminoAcids),
+    lcdr3: generateRandomSequence(9, aminoAcids)
+  };
+  
+  displayCDRs(cdrs);
+  updateAntibodyProperties(cdrs);
+  visualizeAntibody(cdrs, 'igg');
+}
+
+function generateRandomSequence(length, chars) {
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+function exportAntibodyPDB() {
+  alert('Antibody structure exported as PDB file');
+}
+
+// Ab-Ag Docking Functions
+function runDocking() {
+  const abSeq = document.getElementById('ab-sequence').value;
+  const agSeq = document.getElementById('ag-sequence').value;
+  
+  if (!abSeq || !agSeq) {
+    alert('Please provide both antibody and antigen sequences');
+    return;
+  }
+  
+  // Simulate docking results
+  const results = `
+    <div class="successbox">Docking completed successfully!</div>
+    <div class="result-item">
+      <span class="result-label">Best Score</span>
+      <span class="result-value">-285.4 REU</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Clusters Found</span>
+      <span class="result-value">3</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Best RMSD</span>
+      <span class="result-value">1.8 Å</span>
+    </div>
+  `;
+  
+  document.getElementById('docking-results').innerHTML = results;
+  
+  // Update interface analysis
+  document.getElementById('interface-area').textContent = '1850 Å²';
+  document.getElementById('hbonds').textContent = '12';
+  document.getElementById('salt-bridges').textContent = '3';
+  document.getElementById('binding-energy').textContent = '-45.2 kcal/mol';
+  
+  // Visualize complex
+  visualizeDockingComplex();
+}
+
+function visualizeDockingComplex() {
+  if (!viewer) return;
+  
+  viewer.clear();
+  
+  // Antibody (blue)
+  viewer.addSphere({
+    center: {x: -5, y: 0, z: 0},
+    radius: 8,
+    color: '#2563eb'
+  });
+  
+  // Antigen (green)
+  viewer.addSphere({
+    center: {x: 5, y: 0, z: 0},
+    radius: 6,
+    color: '#34d399'
+  });
+  
+  // Interface
+  viewer.addSphere({
+    center: {x: 0, y: 0, z: 0},
+    radius: 3,
+    color: '#fbbf24',
+    opacity: 0.7
+  });
+  
+  viewer.zoomTo();
+  viewer.render();
+}
+
+function loadExample() {
+  document.getElementById('ab-sequence').value = `>Heavy Chain
+EVQLVESGGGLVQPGGSLRLSCAASGFTFSSYWMHWVRQAPGKGLEWVANIKQDGSEKYYVDSVKGRFTISRDNAKNSLYLQMNSLRAEDTAVYYCARDGYSDYWGQGTLVTVSS
+>Light Chain
+DIQMTQSPSSLSASVGDRVTITCRASQSISSYLNWYQQKPGKAPKLLIYAASSLQSGVPSRFSGSGSGTDFTLTISSLQPEDFATYYCQQSYSTPPITFGQGTRLEIKR`;
+  
+  document.getElementById('ag-sequence').value = `>Antigen
+MRVKEKYQHLWRWGWRWGTMLLGMLMICSATEKLWVTVYYGVPVWKEATTTLFCASDAKAYDTEVHNVWATHACVPTDPNPQEVVLVNVTENFNMWKNDMVEQMHEDIISLWDQSLKPCVKLTPLCVSLKCTDLKNDTNTNSSSGRMIMEKGEIKNCSFNISTSIRGKVQKEYAFFYKLDIIPIDNDTTSYKLTSCNTSVITQACPKVSFEPIPIHYCAPAGFAILKCNNKTFNGTGPCTNVSTVQCTHGIRPVVSTQLLLNGSLAEEEVVIRSVNFTDNAKTIIVQLNTSVEINCTRPNNNTRKRIRIQRGPGRAFVTIGKIGNMRQAHCNISRAKWNNTLKQIASKLREQFGNNKTIIFKQSSGGDPEIVTHSFNCGGEFFYCNSTQLFNSTWFNSTWSTEGSNNTEGSDTITLPCRIKQIINMWQKVGKAMYAPPISGQIRCSSNITGLLLTRDGGNSNNESEIFRPGGGDMRDNWRSELYKYKVVKIEPLGVAPTKAKRRVVQREKR`;
+}
+
+function exportDockingPDB() {
+  alert('Docking complex exported as PDB file');
+}
+
+// Ligand Screening Functions
+function runScreening() {
+  const target = document.getElementById('target-pdb').value;
+  const library = document.getElementById('ligand-library').value;
+  
+  if (!target) {
+    alert('Please provide a target protein');
+    return;
+  }
+  
+  // Simulate screening results
+  const results = [
+    {rank: 1, ligand: 'Compound_001', affinity: -9.8, le: 0.45},
+    {rank: 2, ligand: 'Compound_002', affinity: -9.2, le: 0.42},
+    {rank: 3, ligand: 'Compound_003', affinity: -8.9, le: 0.40},
+    {rank: 4, ligand: 'Compound_004', affinity: -8.5, le: 0.38},
+    {rank: 5, ligand: 'Compound_005', affinity: -8.1, le: 0.36}
+  ];
+  
+  const tbody = document.getElementById('screening-results');
+  tbody.innerHTML = results.map(r => `
+    <tr>
+      <td>${r.rank}</td>
+      <td>${r.ligand}</td>
+      <td>${r.affinity}</td>
+      <td>${r.le}</td>
+      <td><button class="btn" onclick="visualizeLigand('${r.ligand}')">View</button></td>
+    </tr>
+  `).join('');
+  
+  // Visualize top hit
+  visualizeLigand('Compound_001');
+}
+
+function visualizeLigand(ligandName) {
+  if (!viewerLig) return;
+  
+  viewerLig.clear();
+  
+  // Protein (gray)
+  viewerLig.addSphere({
+    center: {x: 0, y: 0, z: 0},
+    radius: 10,
+    color: '#6b7280',
+    opacity: 0.5
+  });
+  
+  // Ligand (orange)
+  viewerLig.addSphere({
+    center: {x: 0, y: 0, z: 2},
+    radius: 2,
+    color: '#fb923c'
+  });
+  
+  // Binding site
+  viewerLig.addCylinder({
+    start: {x: 0, y: 0, z: 0},
+    end: {x: 0, y: 0, z: 2},
+    radius: 0.5,
+    color: '#fbbf24'
+  });
+  
+  viewerLig.zoomTo();
+  viewerLig.render();
+}
+
+function addKnownInhibitor() {
+  const customLigands = document.getElementById('custom-ligands');
+  customLigands.value += '\nCC1=CC=C(C=C1)C(=O)O';
+}
+
+function exportPoses() {
+  alert('Ligand poses exported as SDF file');
+}
+
+// CDR Mapping Functions
+function mapCDRs() {
+  const sequence = document.getElementById('cdr-input').value;
+  const scheme = document.getElementById('numbering-scheme').value;
+  
+  if (!sequence) {
+    alert('Please provide an antibody sequence');
+    return;
+  }
+  
+  // Simulate CDR mapping
+  const stats = `
+    <div class="successbox">CDR mapping completed!</div>
+    <div class="result-item">
+      <span class="result-label">Chain Type</span>
+      <span class="result-value">Heavy Chain</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Germline</span>
+      <span class="result-value">IGHV3-23*01</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">Humanness Score</span>
+      <span class="result-value">0.92</span>
+    </div>
+    <div class="result-item">
+      <span class="result-label">CDR Length</span>
+      <span class="result-value">H1:8, H2:8, H3:14</span>
+    </div>
+  `;
+  
+  document.getElementById('cdr-stats').innerHTML = stats;
+  
+  // Show alignment
+  const alignment = `
+Query:  EVQLVESGGGLVQPGGSLRLSCAASGFTFSSYWMHWVRQAPGKGLEWVA
+        ||||||||||||||||||||||||||||||||||||||||||||||||||
+Germln: EVQLVESGGGLVQPGGSLRLSCAASGFTFSSYWMHWVRQAPGKGLEWVA
+
+CDR-H1: [GFTFSSYW]
+CDR-H2: [NIKQDGSE]
+CDR-H3: [ARDGYSDYWGQGTL]
+  `;
+  
+  document.getElementById('sequence-alignment').textContent = alignment;
+  
+  // Visualize CDRs
+  visualizeCDRRegions();
+}
+
+function visualizeCDRRegions() {
+  if (!viewerCDR) return;
+  
+  viewerCDR.clear();
+  
+  // Framework regions (blue)
+  viewerCDR.addCylinder({
+    start: {x: -10, y: 0, z: 0},
+    end: {x: 10, y: 0, z: 0},
+    radius: 1,
+    color: '#2563eb'
+  });
+  
+  // CDRs (green)
+  const cdrPos = [-7, -3, 0, 3, 7];
+  cdrPos.forEach(x => {
+    viewerCDR.addSphere({
+      center: {x: x, y: 0, z: 0},
+      radius: 2,
+      color: '#34d399'
+    });
+  });
+  
+  viewerCDR.zoomTo();
+  viewerCDR.render();
+}
+
+function clearCDR() {
+  document.getElementById('cdr-input').value = '';
+  document.getElementById('cdr-stats').innerHTML = '<div class="infobox">Enter sequence and map CDRs to see statistics</div>';
+  document.getElementById('sequence-alignment').textContent = 'Alignment will appear here after CDR mapping';
+  if (viewerCDR) {
+    viewerCDR.clear();
+    viewerCDR.render();
+  }
+}
+
+function exportCDRAnalysis() {
+  alert('CDR analysis exported as CSV file');
+}
+
+// Viewer Control Functions
+function resetDesignView() {
+  if (viewerDesign) {
+    viewerDesign.zoomTo();
+    viewerDesign.render();
+  }
+}
+
+function resetDockView() {
+  if (viewer) {
+    viewer.zoomTo();
+    viewer.render();
+  }
+}
+
+function resetLigView() {
+  if (viewerLig) {
+    viewerLig.zoomTo();
+    viewerLig.render();
+  }
+}
+
+function resetCDRView() {
+  if (viewerCDR) {
+    viewerCDR.zoomTo();
+    viewerCDR.render();
+  }
+}
+
+function toggleSurface() {
+  // Toggle surface visualization
+  alert('Surface toggled');
+}
+
+function showInteractions() {
+  // Show molecular interactions
+  alert('Interactions displayed');
+}
+
+function highlightCDRs() {
+  // Highlight CDR regions
+  alert('CDRs highlighted');
+}
+</script>
+
+
+<script>
+// === Simple job loader for Discord-bot-triggered runs ===
+(async function(){
+  const params = new URLSearchParams(location.search);
+  const job = params.get('job');
+  if (!job) return;
+
+  const pill = document.getElementById('statusPill');
+  const prog = document.getElementById('prog');
+
+  function setPill(t){ if (pill) pill.textContent = t; }
+
+  async function fetchJob() {
+    const r = await fetch('/jobs/' + job);
+    if (!r.ok) throw new Error('job not found');
+    return r.json();
+  }
+
+  setPill('queued…');
+  let tries = 0;
+  while (tries++ < 300) {
+    const j = await fetchJob();
+    if (j.status === 'done') {
+      setPill('complete');
+      if (prog) prog.value = 1;
+      importDockingResults(j.result);
+      return;
+    }
+    if (j.status === 'error') {
+      setPill('error');
+      alert('Docking failed: ' + (j.error||'unknown'));
+      return;
+    }
+    if (prog) prog.value = Math.min(1, (tries % 10)/10);
+    setPill(j.status + '…');
+    await new Promise(r=>setTimeout(r, 1000));
+  }
+  setPill('timeout');
+})();
+
+// Bridge: take backend result and hydrate UI.
+// Expects: { params, complexes: [{ label, topPoses, Aviz, B0 }] }
+function importDockingResults(result){
+  try {
+    if (!window.combos) window.combos = [];
+    const mapped = (result.complexes||[]).map(c => ({
+      label: c.label,
+      Aatoms: [], Batoms: [],
+      cA: {x:0,y:0,z:0}, cB: {x:0,y:0,z:0},
+      topPoses: c.topPoses || [],
+      currentIndex: 0,
+      Aviz: c.Aviz || [],
+      B0: c.B0 || []
+    }));
+    window.combos = mapped;
+    if (typeof updateComboSelect === 'function') updateComboSelect();
+    if (typeof setCurrentCombo === 'function') setCurrentCombo(0);
+    if (typeof showPose === 'function') showPose(0);
+    const sb = document.getElementById('scoreBox');
+    if (sb && result?.complexes?.[0]?.topPoses?.length) {
+      const p = result.complexes[0].topPoses[0];
+      sb.innerHTML = `<b>${result.complexes[0].label}</b><br>Score: ${p.score?.toFixed?.(2) ?? p.score}`;
+    }
+  } catch (e) {
+    console.error('importDockingResults error:', e);
+    alert('Could not import results into the UI.');
+  }
+}
+</script>
+
+</body>
+</html>
